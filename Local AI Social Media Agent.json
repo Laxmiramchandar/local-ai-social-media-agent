@@ -1,0 +1,368 @@
+{
+  "name": "Local AI Social Media Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "3f121d6e-d516-4667-9652-4aa752fe83a0",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1,
+      "position": [
+        704,
+        400
+      ],
+      "webhookId": "a068d6b7-265e-4f2d-8ed4-43ae7c1eae8f"
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "topic",
+              "stringValue": "={{ $json.chatInput }}"
+            }
+          ]
+        },
+        "include": "none",
+        "options": {}
+      },
+      "name": "Extract Topic",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        912,
+        400
+      ],
+      "id": "4696b7db-3d0f-4d53-9833-7ae848e1f7ab"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"phi3:mini\",\n  \"stream\": false,\n  \"prompt\": \"Explain in simple terms about this topic:\\n{{$json.topic}}\"\n}\n",
+        "options": {}
+      },
+      "name": "Research Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1104,
+        400
+      ],
+      "id": "79f4a866-0e18-47e0-8e17-6e61e5afcea5"
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "research",
+              "stringValue": "={{ $json.response }}"
+            },
+            {
+              "name": "topic",
+              "stringValue": "={{ $('Extract Topic').item.json.topic }}"
+            }
+          ]
+        },
+        "include": "none",
+        "options": {}
+      },
+      "name": "Clean Research",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        1312,
+        400
+      ],
+      "id": "a585d422-26ff-473a-901f-637d46c12cd1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"phi3:mini\",\n  \"stream\": false,\n  \"prompt\": \"Explain in simple terms about this topic:\\n{{$json.topic}}\"\n}\n",
+        "options": {
+          "timeout": 100000000
+        }
+      },
+      "name": "Reel Script Generator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1504,
+        400
+      ],
+      "id": "a5400722-37f1-4c47-91aa-9072fdcfdecd"
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "reel_script",
+              "stringValue": "={{ $json.response }}"
+            },
+            {
+              "name": "topic",
+              "stringValue": "={{ $('Extract Topic').item.json.topic }}"
+            }
+          ]
+        },
+        "include": "none",
+        "options": {}
+      },
+      "name": "Clean Script",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        1712,
+        400
+      ],
+      "id": "991b12ca-36c8-4f08-86be-2f3d7462c4f4"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"phi3:mini\",\n  \"stream\": false,\n  \"prompt\": \"Write a SHORT Instagram reel script in exactly 5 scenes about {{$json.topic}}. Each scene max 8 words only. End with CTA.\"\n}\n",
+        "options": {
+          "timeout": 1000000000
+        }
+      },
+      "name": "Image Prompt Generator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1904,
+        400
+      ],
+      "id": "a050a11a-45dd-4c82-86ab-4502eb816e88"
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "image_prompts",
+              "stringValue": "={{ $json.response }}"
+            },
+            {
+              "name": "topic",
+              "stringValue": "={{ $('Extract Topic').item.json.topic }}"
+            },
+            {
+              "name": "reel_script",
+              "stringValue": "={{ $('Reel Script Generator').item.json.response }}"
+            }
+          ]
+        },
+        "include": "none",
+        "options": {}
+      },
+      "name": "Clean Prompts",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        2112,
+        400
+      ],
+      "id": "438cd963-8261-4263-b3b5-82cb18cc9190"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"phi3:mini\",\n  \"stream\": false,\n  \"prompt\": \"Write an engaging Instagram caption with emojis and 10 hashtags about {{$json.topic}}\"\n}\n",
+        "options": {
+          "timeout": 100000000
+        }
+      },
+      "name": "Caption Generator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2304,
+        400
+      ],
+      "id": "ddf4ea53-cbfc-4f87-9047-790a1877ffc2"
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "name": "Final Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        2512,
+        400
+      ],
+      "id": "ef62d647-3142-4cd3-9ce8-ed74f8bb861e"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Extract Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Topic": {
+      "main": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Agent": {
+      "main": [
+        [
+          {
+            "node": "Clean Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Research": {
+      "main": [
+        [
+          {
+            "node": "Reel Script Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reel Script Generator": {
+      "main": [
+        [
+          {
+            "node": "Clean Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Script": {
+      "main": [
+        [
+          {
+            "node": "Image Prompt Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Prompt Generator": {
+      "main": [
+        [
+          {
+            "node": "Clean Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Prompts": {
+      "main": [
+        [
+          {
+            "node": "Caption Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Caption Generator": {
+      "main": [
+        [
+          {
+            "node": "Final Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "adfbb2bb-fad7-4e06-b250-c84ff7b40d6a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e16f0ab84a21d10e58f4d2ebb86bb4d7d2c60f891a75764a4a045d6c33304f09"
+  },
+  "id": "3wBeJ89zV1PKSTba",
+  "tags": []
+}
